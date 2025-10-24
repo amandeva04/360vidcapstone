@@ -29,3 +29,57 @@ class ViewportProcessor:
 # LSTMs and GRUs will come here
 
 # need to add streaming, evaluation, expirement, and graphing soon
+
+# streaming
+class StreamingSimulator:
+    def __init__(self, bandwidth=2000):
+        self.bandwidth = bandwidth
+    
+    def fetch_tiles(self, predicted_viewport, tiles, bitrates):
+        # Simulate fetching tiles for viewport
+        return {"tiles_fetched": tiles, "quality": np.random.choice(bitrates)}
+    
+# evaluation
+class QoEEvaluator:
+    def __init__(self):
+        pass
+
+    def compute_metrics(self, ground_truth, prediction):
+        # Example metrics (just random values for now, need to add actual ones later)
+        viewport_deviation = np.random.random()
+        psnr = np.random.uniform(20, 40)
+        quality_var = np.random.uniform(0, 5)
+        bandwidth_occ = np.random.uniform(1000, 3000)
+        
+        return {
+            "ViewportDeviation": viewport_deviation,
+            "PSNR": psnr,
+            "QualityVariance": quality_var,
+            "BandwidthOccupation": bandwidth_occ
+        }
+
+class Experiment:
+    def __init__(self, dataset, predictor, simulator, evaluator):
+        self.dataset = dataset
+        self.predictor = predictor
+        self.simulator = simulator
+        self.evaluator = evaluator
+    
+    def run(self):
+        traces = self.dataset.load_traces()
+        for i, row in traces.iterrows():
+            gt_viewport = ViewportProcessor().compute_viewport(row['yaw'], row['pitch'], row['roll'])
+            pred_viewport = self.predictor.predict(traces.iloc[:i+1])
+            sim_result = self.simulator.fetch_tiles(pred_viewport, (6,12), [20,50,100,200,300])
+            metrics = self.evaluator.compute_metrics(gt_viewport, pred_viewport)
+            print(f"Step {i}: {metrics}")
+
+# main
+if __name__ == "__main__":
+    dataset = DatasetLoader("video.mp4", "traces.csv")
+    # predictor = ViewportPredictor() # model when it's ready
+    simulator = StreamingSimulator()
+    evaluator = QoEEvaluator()
+
+    exp = Experiment(dataset, simulator, evaluator) # need to add model when it's ready right after dataset
+    exp.run()
