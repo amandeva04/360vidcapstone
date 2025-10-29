@@ -1,0 +1,19 @@
+{
+  "hz": 60.0,
+  "T": 20,
+  "horizon": 1,
+  "epochs": 10,
+  "batch": 256,
+  "hidden": 96,
+  "layers": 1,
+  "lr": 0.001,
+  "seed": 1337,
+  "device": "mps",
+  "glob": "Formated_Data/Experiment_1/**/video_*.csv",
+  "test_deg": 0.30590319122526455,
+  "best_val_deg": 0.3205779870501259,
+  "n_train": 1047419,
+  "n_val": 232768,
+  "n_test": 225142,
+  "run_dir": "/Users/rubenvipin/Downloads/360vidcapstone-testbed/runs/GazeGRU_T20_H96_L1_hz60_20251028-174730"
+}
