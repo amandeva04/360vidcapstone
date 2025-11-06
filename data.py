@@ -21,7 +21,35 @@ def quat_to_euler_xyz(qx,qy,qz,qw):
     siny = 2*(qw*qz + qx*qy); cosy = 1-2*(qy*qy+qz*qz); yaw = np.arctan2(siny, cosy)
     return yaw, pitch, roll
 
-def load_and_resample(csv_path, hz=90.0):
+class KalmanFilter:
+    def __init__(self, process_var=1e-4, meas_var=1e-2):
+        self.process_var = process_var  #variance (expected change between timestamps)
+        self.meas_var = meas_var        # measurement variance (how noisy the measurements are)e
+        self.x = None  # estimated value
+        self.P = None  # estimated uncertainty
+
+    def filter(self, z):
+        """
+        z: numpy array of measurements
+        returns: numpy array of filtered values
+        """
+        x_est = np.zeros_like(z)
+        for i, zi in enumerate(z):
+            if self.x is None:
+                # Initialize first measurement
+                self.x = zi
+                self.P = 1.0
+            else:
+                # Prediction step
+                self.P = self.P + self.process_var
+                # Update step
+                K = self.P / (self.P + self.meas_var)
+                self.x = self.x + K * (zi - self.x)
+                self.P = (1 - K) * self.P
+            x_est[i] = self.x
+        return x_est
+
+def load_and_resample(csv_path, hz=90.0, kalman_filter = True):
     df = pd.read_csv(csv_path)
 
     # Guard: required columns present
@@ -59,6 +87,12 @@ def load_and_resample(csv_path, hz=90.0):
     # linear interp (handles monotone tsec); cast to f32
     yaw_i   = np.interp(t_new, tsec, yaw).astype(np.float32)
     pitch_i = np.interp(t_new, tsec, pitch).astype(np.float32)
+
+    if kalman_filter:
+        kf_yaw = KalmanFilter()
+        kf_pitch = KalmanFilter()
+        yaw_i = kf_yaw.filter(yaw_i)
+        pitch_i = kf_pitch.filter(pitch_i)
 
     out = {
         'timestamp_s': t_new.astype(np.float32),
