@@ -9,7 +9,8 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from data import load_and_resample, make_windows
-from models import GazeGRU
+from models import GazeLSTM
+
 from training import NpSeqDataset, fit, evaluate
 from saving import save_checkpoint
 
@@ -137,7 +138,8 @@ def main():
     # 6) Model (auto-infer in_dim)
     in_dim = int(Xtr.shape[-1])
     print(f"[INFO] inferred in_dim = {in_dim}")
-    model = GazeGRU(in_dim=in_dim, hidden=args.hidden, layers=args.layers).to(args.device)
+    model = GazeLSTM(in_dim=in_dim, hidden=args.hidden, layers=args.layers).to(args.device)
+
 
     # Train
     best = fit(model, dl_tr, dl_va,
