@@ -12,11 +12,11 @@
   "glob": "Formated_Data/Experiment_1/**/video_*.csv",
   "add_xyz_vel": false,
   "zscore": false,
-  "test_deg": 1.823672675438461,
-  "best_val_deg": 1.7330571713161216,
+  "test_deg": 1.1955919792455842,
+  "best_val_deg": 1.191996939309856,
   "n_train": 5236480,
   "n_val": 1163714,
   "n_test": 1125598,
   "in_dim": 8,
-  "run_dir": "/Users/rubenvipin/Downloads/360vidcapstone-testbed/runs/GazeGRU_T20_H96_L1_hz60_noxyzv_raw_20251104-150634"
+  "run_dir": "/Users/neelsuresh/PycharmProjects/CS4485/360vidcapstone/runs/GazeGRU_T20_H96_L1_hz60_noxyzv_raw_20251112-130007"
 }
