@@ -5,15 +5,15 @@ ROOT = Path(__file__).resolve().parent
 DATA_ROOT = ROOT / "Formated_Data" / "Experiment_1"
 
 # find all video_*.csv under any numbered subfolder
-files = sorted(str(p) for p in DATA_ROOT.rglob("video_*.csv"))
-
-print(f"[INFO] script dir = {ROOT}")
-print(f"[INFO] data root   = {DATA_ROOT}")
-print(f"[INFO] matched files: {len(files)}")
-for p in files[:8]:
-    print("  -", p)
-
-assert len(files) > 0, "No CSV files found; check paths."
+# files = sorted(str(p) for p in DATA_ROOT.rglob("video_*.csv"))
+#
+# print(f"[INFO] script dir = {ROOT}")
+# print(f"[INFO] data root   = {DATA_ROOT}")
+# print(f"[INFO] matched files: {len(files)}")
+# for p in files[:8]:
+#     print("  -", p)
+#
+# assert len(files) > 0, "No CSV files found; check paths."
 
 def quat_to_euler_xyz(qx,qy,qz,qw):
     sinr = 2*(qw*qx + qy*qz); cosr = 1-2*(qx*qx+qy*qy); roll = np.arctan2(sinr, cosr)
@@ -21,7 +21,35 @@ def quat_to_euler_xyz(qx,qy,qz,qw):
     siny = 2*(qw*qz + qx*qy); cosy = 1-2*(qy*qy+qz*qz); yaw = np.arctan2(siny, cosy)
     return yaw, pitch, roll
 
-def load_and_resample(csv_path, hz=90.0):
+class KalmanFilter:
+    def __init__(self, process_var=1e-4, meas_var=1e-2):
+        self.process_var = process_var  #variance (expected change between timestamps)
+        self.meas_var = meas_var        # measurement variance (how noisy the measurements are)
+        self.x = None  # estimated value
+        self.P = None  # estimated uncertainty
+
+    def filter(self, z):
+        """
+        z: numpy array of measurements
+        returns: numpy array of filtered values
+        """
+        x_est = np.zeros_like(z)
+        for i, zi in enumerate(z):
+            if self.x is None:
+                # Initialize first measurement
+                self.x = zi
+                self.P = 1.0
+            else:
+                # Prediction step
+                self.P = self.P + self.process_var
+                # Update step
+                K = self.P / (self.P + self.meas_var)
+                self.x = self.x + K * (zi - self.x)
+                self.P = (1 - K) * self.P
+            x_est[i] = self.x
+        return x_est
+
+def load_and_resample(csv_path, hz=90.0, kalman_filter = True):
     df = pd.read_csv(csv_path)
 
     # Guard: required columns present
@@ -59,6 +87,12 @@ def load_and_resample(csv_path, hz=90.0):
     # linear interp (handles monotone tsec); cast to f32
     yaw_i   = np.interp(t_new, tsec, yaw).astype(np.float32)
     pitch_i = np.interp(t_new, tsec, pitch).astype(np.float32)
+
+    if kalman_filter:
+        kf_yaw = KalmanFilter()
+        kf_pitch = KalmanFilter()
+        yaw_i = kf_yaw.filter(yaw_i)
+        pitch_i = kf_pitch.filter(pitch_i)
 
     out = {
         'timestamp_s': t_new.astype(np.float32),
@@ -126,5 +160,6 @@ def make_windows(df, T=20, horizon=1, add_xyz_vel=False):
         Y.append(vec / n)
 
     return np.asarray(X, np.float32), np.asarray(Y, np.float32)
+
 
 
