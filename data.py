@@ -5,15 +5,15 @@ ROOT = Path(__file__).resolve().parent
 DATA_ROOT = ROOT / "Formated_Data" / "Experiment_1"
 
 # find all video_*.csv under any numbered subfolder
-# files = sorted(str(p) for p in DATA_ROOT.rglob("video_*.csv"))
-#
-# print(f"[INFO] script dir = {ROOT}")
-# print(f"[INFO] data root   = {DATA_ROOT}")
-# print(f"[INFO] matched files: {len(files)}")
-# for p in files[:8]:
-#     print("  -", p)
-#
-# assert len(files) > 0, "No CSV files found; check paths."
+files = sorted(str(p) for p in DATA_ROOT.rglob("video_*.csv"))
+
+print(f"[INFO] script dir = {ROOT}")
+print(f"[INFO] data root   = {DATA_ROOT}")
+print(f"[INFO] matched files: {len(files)}")
+for p in files[:8]:
+    print("  -", p)
+
+assert len(files) > 0, "No CSV files found; check paths."
 
 def quat_to_euler_xyz(qx,qy,qz,qw):
     sinr = 2*(qw*qx + qy*qz); cosr = 1-2*(qx*qx+qy*qy); roll = np.arctan2(sinr, cosr)
@@ -24,7 +24,7 @@ def quat_to_euler_xyz(qx,qy,qz,qw):
 class KalmanFilter:
     def __init__(self, process_var=1e-4, meas_var=1e-2):
         self.process_var = process_var  #variance (expected change between timestamps)
-        self.meas_var = meas_var        # measurement variance (how noisy the measurements are)
+        self.meas_var = meas_var        # measurement variance (how noisy the measurements are)e
         self.x = None  # estimated value
         self.P = None  # estimated uncertainty
 
@@ -160,6 +160,5 @@ def make_windows(df, T=20, horizon=1, add_xyz_vel=False):
         Y.append(vec / n)
 
     return np.asarray(X, np.float32), np.asarray(Y, np.float32)
-
 
 

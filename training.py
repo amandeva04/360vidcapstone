@@ -24,7 +24,7 @@ def fit(model,
         epochs: int = 12,
         lr: float = 1e-3,
         device: str = "cpu",
-        clip: float | None = None,           # ⬅ default None (let grads breathe first)
+        clip = None,           # ⬅ default None (let grads breathe first)
         show_batches: bool = True,
         writer=None,
         log_batches: bool = False,
