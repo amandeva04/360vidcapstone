@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from data import load_and_resample, make_windows
-from models import GazeLSTM
+from models import GazeLSTM, GazeTCN
 
 from training import NpSeqDataset, fit, evaluate
 from saving import save_checkpoint
@@ -40,6 +40,15 @@ def parse_args():
     # Feature toggles
     ap.add_argument("--add_xyz_vel", action="store_true", help="append x,y,z head-position velocities")
     ap.add_argument("--zscore", action="store_true", help="z-score standardize input features")
+
+    # Architecture choice
+    ap.add_argument(
+        "--arch",
+        choices=["lstm", "tcn"],
+        default="lstm",
+        help="model architecture (lstm or tcn)",
+    )
+
     return ap.parse_args()
 
 
@@ -126,8 +135,9 @@ def main():
     dl_te = DataLoader(NpSeqDataset(Xte, Yte), batch_size=args.batch, shuffle=False)
 
     # 5) TensorBoard writer
+    arch_tag = args.arch.upper()
     run_name = (
-        f"GazeGRU_T{args.T}_H{args.hidden}_L{args.layers}_"
+        f"Gaze{arch_tag}_T{args.T}_H{args.hidden}_L{args.layers}_"
         f"hz{int(args.hz)}_{'xyzv' if args.add_xyz_vel else 'noxyzv'}_"
         f"{'z' if args.zscore else 'raw'}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     )
@@ -138,16 +148,27 @@ def main():
     # 6) Model (auto-infer in_dim)
     in_dim = int(Xtr.shape[-1])
     print(f"[INFO] inferred in_dim = {in_dim}")
-    model = GazeLSTM(in_dim=in_dim, hidden=args.hidden, layers=args.layers).to(args.device)
 
+    if args.arch == "lstm":
+        print("[INFO] using GazeLSTM")
+        model = GazeLSTM(in_dim=in_dim, hidden=args.hidden, layers=args.layers).to(args.device)
+    elif args.arch == "tcn":
+        print("[INFO] using GazeTCN")
+        model = GazeTCN(in_dim=in_dim, hidden=args.hidden, layers=args.layers).to(args.device)
+    else:
+        raise ValueError(f"Unknown arch: {args.arch}")
 
     # Train
-    best = fit(model, dl_tr, dl_va,
-           epochs=args.epochs,
-           lr=args.lr,
-           device=args.device,
-           clip=None,                 # <— let grads breathe at first
-           writer=writer)
+    best = fit(
+        model,
+        dl_tr,
+        dl_va,
+        epochs=args.epochs,
+        lr=args.lr,
+        device=args.device,
+        clip=None,                 # <— let grads breathe at first
+        writer=writer,
+    )
     # always have a usable state_dict
     if not isinstance(best.get("state_dict"), dict):
         print("[WARN] No valid best state captured; using current model weights.")
@@ -162,21 +183,34 @@ def main():
 
     # (optional) hparams summary in TensorBoard
     hparams = {
-        "T": args.T, "horizon": args.horizon, "hz": args.hz,
-        "hidden": args.hidden, "layers": args.layers,
-        "batch": args.batch, "lr": args.lr, "epochs": args.epochs,
-        "device": args.device, "in_dim": in_dim,
-        "add_xyz_vel": int(args.add_xyz_vel), "zscore": int(args.zscore),
+        "T": args.T,
+        "horizon": args.horizon,
+        "hz": args.hz,
+        "hidden": args.hidden,
+        "layers": args.layers,
+        "batch": args.batch,
+        "lr": args.lr,
+        "epochs": args.epochs,
+        "device": args.device,
+        "in_dim": in_dim,
+        "add_xyz_vel": int(args.add_xyz_vel),
+        "zscore": int(args.zscore),
+        "arch": args.arch,
     }
-    writer.add_hparams(hparams, {"hparams/best_val_deg": float(best["val_deg"]),
-                                 "hparams/test_deg": float(test_deg)})
+    writer.add_hparams(
+        hparams,
+        {
+            "hparams/best_val_deg": float(best["val_deg"]),
+            "hparams/test_deg": float(test_deg),
+        },
+    )
     writer.close()
 
     # 8) Save into Trained_Models/
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     out_dir = ROOT / "Trained_Models"
     out_name = (
-        f"GazeGRU_T{args.T}_H{args.hidden}_L{args.layers}_"
+        f"Gaze{arch_tag}_T{args.T}_H{args.hidden}_L{args.layers}_"
         f"hz{int(args.hz)}_ep{args.epochs}_in{in_dim}_{stamp}.pt"
     )
     out_path = out_dir / out_name
